@@ -1,115 +1,178 @@
 package gameplay.players;
 
 import cards.Card;
+import cards.Suite;
 import gameplay.Table;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Scanner;
-
-public class Player {
-    Scanner scn = new Scanner(System.in);
-
-    // Objects
-    public List<Card> hand = new ArrayList<>();
-    public Table table;
-    public Player opponent;
-
-    public boolean over = false;
-
-    // Scoring
-    public int score = 0;
-    public int aces = 0;
-
-
-        // Constructor //
+public class Player extends PlayerBase {
+    public int balance = 500;
+    public int bet;
 
     public Player(Table table) {
-        this.table = table;
+        super(table);
     }
 
 
         // Round Progress //
 
+    @Override
     public void setup() {
-        over = false;
+        placeBet();
+
+        System.out.println("\n\t<< YOU >>");
+        System.out.println("The dealer deals you two cards.");
+        receiveCard();
+        receiveCard();
+        displayHand();
+        super.setup();
     }
 
-    public void displayHand() {
-        for (Card card : hand) {
-            System.out.println(card.getName());
+    @Override
+    public void turn() {
+        // Check to skip turn or end round
+        if (over) {
+            if (opponent.over) {
+                table.compareHands();
+            }
+            opponent.turn();
         }
 
-        System.out.println("Score >> " + computeScore());
+        // Display
+        System.out.println("\n\t<< YOU >>");
+        System.out.println("You have:");
+        displayHand();
+        System.out.print("Please Enter a command: Hit | Stand | Double Down >> ");
+        String command = scn.nextLine();
         System.out.println();
+
+        // Hit
+        if (command.equalsIgnoreCase("hit")) {
+            hit();
+
+        // Stand
+        } else if (command.equalsIgnoreCase("stand")) {
+            stand();
+
+        // Double Down
+        } else if (command.equalsIgnoreCase("double down")) {
+            doubleDown();
+
+        // Invalid Command
+        } else {
+            System.out.println("Command not recognized");
+            turn();
+        }
+
+        super.turn();
     }
 
-    public void turn() {
-        opponent.turn();
-    }
-
+    @Override
     public void win() {
+        System.out.println("\nYou Win!");
+        System.out.println("You won $" + bet);
+        balance += bet;
+
+        super.win();
+    }
+
+    @Override
+    public void lose() {
+        System.out.println("You lost $" + bet);
+        balance -= bet;
+        if (balance <= 0) {
+            table.die();
+            System.out.println("\nYou can no longer afford to play.\n");
+            new Table();
+        }
+    }
+
+    public void tie() {
+        System.out.println("\nTie!");
+        System.out.println("You receive you money back");
         table.setup();
     }
 
-    public void lose() {}
+    public void checkNaturalBlackjack() {
+        // No Nat
+        if (score != 21 && opponent.score != 21) return;
 
-
-        // Turn Actions //
-
-    public void hit() {
-        receiveCard();
-        displayHand();
-        checkScore();
-    }
-
-    public void stand() {
-        displayHand();
-        over = true;
-    }
-
-    public Card receiveCard() {
-        return table.dealCard(this);
-    }
-
-
-        // Scoring //
-
-    public void checkScore() {
-        if (score > 21) {
-            System.out.println("Bust!");
+        // Dealer Nat
+        if (score != 21 && opponent.score == 21) {
+            System.out.println("\nThe dealer has a natural blackjack.\n");
             opponent.win();
         }
+
+        // Player Nat
+        if (score == 21 && opponent.score != 21) {
+            System.out.println("\nYou got a natural blackjack!");
+            System.out.println("You won $" + (bet / 2));
+            balance += bet / 2;
+            super.win();
+        }
+
+        // Standoff
+        if (score == 21 && opponent.score == 21){
+            System.out.println("\nBoth you and the dealer have a natural blackjack.\n");
+            opponent.revealCard();
+            tie();
+        }
     }
 
-    public String computeScore() {
-        score = 0;
-        aces = 0;
+    // Game Actions //
 
-        // Base values
-        for (Card card : hand) {
-            score += getCardValue(card);
-        }
-
-        // Increase ace value if possible
-        for (int i = 0; i < aces; i++) {
-            if (score + 10 <= 21) score += 10;
-        }
-
-        return String.valueOf(score);
+    @Override
+    public void hit() {
+        Table.clearConsole();
+        System.out.println("\n\t<< YOU >>");
+        System.out.println("The dealer deals you one card.");
+        super.hit();
     }
 
-    public int getCardValue(Card card) {
-        // Ace
-        if (card.rank == 1) {
-            aces++;
-            return 1;
+    @Override
+    public void stand() {
+        Table.clearConsole();
+        System.out.println("\n\t<< YOU >>");
+        System.out.println("You signal the dealer that you will stand.");
+        super.stand();
+    }
+
+    public void doubleDown() {
+        Table.clearConsole();
+        // Check Balance
+        if (bet * 2 > balance) {
+            System.out.println("You cannot afford to do this action");
+            turn();
         }
 
-        // 2 - 10
-        if (card.rank >= 2 && card.rank <= 10) return card.rank;
+        // Apply new bet
+        bet *= 2;
+        System.out.println("\n\t<< YOU >>");
+        System.out.println("You double your bet and the dealer deals you one card.");
 
-        // Face cards
-        return 10;
+        // Draw
+        super.hit();
+        over = true;
+        System.out.print("Your new bet is $" + bet);
+        System.out.println();
+    }
+
+    public void placeBet() {
+        // Display
+        System.out.println("\nCurrent Balance: $" + balance);
+        System.out.print("Enter Bet Amount >> ");
+
+        // Test for integer
+        try {
+            bet = Integer.parseInt(scn.nextLine());
+        } catch (Exception e) {
+            System.out.println("Invalid Bet");
+            placeBet();
+        }
+
+        // Test for valid amount
+        if (bet > balance || bet < 1) {
+            System.out.println("Invalid Bet");
+            placeBet();
+        }
     }
 }

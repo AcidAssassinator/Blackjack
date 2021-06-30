@@ -1,10 +1,12 @@
 package gameplay.players;
 
 import cards.Card;
+import cards.Suite;
 import gameplay.Table;
 
-public class Dealer extends Player{
+public class Dealer extends PlayerBase {
     public Card hiddenCard;
+    public int hiddenScore;
 
     public Dealer(Table table) {
         super(table);
@@ -20,7 +22,6 @@ public class Dealer extends Player{
         receiveCard();
         hiddenCard = receiveCard();
         displayHand();
-
         super.setup();
     }
 
@@ -29,11 +30,7 @@ public class Dealer extends Player{
         System.out.println("\n\t<< DEALER >>");
 
         // Reveal hidden card
-        if (hiddenCard != null) {
-            revealCard();
-            checkScore();
-            System.out.println();
-        }
+        if (hiddenCard != null) revealCard();
 
         // The dealer "AI"
         if (score >= 17) stand();
@@ -44,13 +41,14 @@ public class Dealer extends Player{
 
     @Override
     public void win() {
+        if (hiddenCard != null) revealCard();
         System.out.println("\nThe Dealer Wins");
         opponent.lose();
         super.win();
     }
 
 
-        // Game Actions //
+    // Game Actions //
 
     @Override
     public void hit() {
@@ -79,6 +77,7 @@ public class Dealer extends Player{
         System.out.println("Score >> " + computeScore());
     }
 
+    @Override
     public void revealCard() {
         System.out.println("The dealer reveals their hidden card.");
         hiddenCard = null;
@@ -88,11 +87,10 @@ public class Dealer extends Player{
 
         // Scoring //
 
-    @Override
-    public int getCardValue(Card card) {
-        // Don't count hidden card to score
-        if (card == hiddenCard) return 0;
 
-        return super.getCardValue(card);
+    @Override
+    public String computeScore() {
+        if (hiddenCard == null) return super.computeScore();
+        return String.valueOf(Integer.parseInt(super.computeScore()) - getCardValue(hiddenCard));
     }
 }
