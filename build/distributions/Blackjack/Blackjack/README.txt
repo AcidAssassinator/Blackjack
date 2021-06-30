@@ -1,1 +1,0 @@
-Run the file at bin/Blackjack.bat to run the program.
